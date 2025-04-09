@@ -5,7 +5,7 @@ from openai.types.responses import ResponseTextDeltaEvent
 from agents import Agent, Runner, trace
 
 async def main():
-    agent = Agent(name="Assistant", instructions="You are an unusually verbose, but helpful assistant")
+    agent = Agent(name="Assistant", instructions="You are a helpful assistant")
 
     thread_id = str(time.time())
     with trace(workflow_name="Conversation " + thread_id, group_id=thread_id):
