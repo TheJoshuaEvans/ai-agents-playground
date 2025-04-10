@@ -12,3 +12,8 @@ Run the main program for a basic "ChatGPT" experience:
 ```sh
 uv run main.py
 ```
+
+Play a game of ~~Akinator~~ Err... Rotanika:
+```sh
+uv run akinator.py
+```
