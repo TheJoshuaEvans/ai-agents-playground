@@ -10,7 +10,7 @@ from src.runners.display_streamed_message_result import display_streamed_message
 
 class RunOutput(BaseModel):
     is_question: bool
-    message: str
+    content: str
     reasoning: str
 
 class GameState(Enum):

@@ -21,8 +21,9 @@ async def display_streamed_message_result(result, prefix=""):
                 num_dots = 0
                 thinking_text = starting_text
 
-    print('', end="\x1b[1K\r")
+    # Clear the console line
+    print('', end="\x1b[1K\r", flush=True)
 
-    print(prefix + result.final_output.message)
+    print(prefix + result.final_output.content)
     print('')
 

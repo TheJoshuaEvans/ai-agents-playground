@@ -17,3 +17,13 @@ Play a game of ~~Akinator~~ Err... Rotanika:
 ```sh
 uv run akinator.py
 ```
+
+Run a simple screenplay-developer CLI program
+```sh
+uv run screenplay.py
+```
+
+Run the more advanced Screenplay Assistant 3000
+```sh
+uv run screenplay_gui.py
+```
