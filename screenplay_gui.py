@@ -1,5 +1,7 @@
 import os
 
+from datetime import datetime, timezone
+
 from agents import Agent, Runner, function_tool, trace
 from nicegui import app, binding, ui
 from pydantic import BaseModel
@@ -8,19 +10,31 @@ from src.agents.screenwriter_agent import ScreenplayAgent
 from src.runners.display_streamed_message_result import display_streamed_message_result
 from src.runners.display_streamed_result import display_streamed_result
 from src.utils.double_newline import double_newline
-from src.utils.extract_screenplay_text import extract_screenplay_text
 
 @binding.bindable_dataclass
 class ScreenplayData:
+    # Don't reset the screenplay UI element when resetting the data
+    screenplay_ui = None
+
     def reset(self):
         self.is_thinking = False
         self.raw_output = ""
         self.prompt_text = ""
         self.latest_screenplay = ""
+        self.conversation_log = []
         self.user_name = "User"
         self.has_edited_screenplay = False
         self.has_received_screenplay = False
-        self.screenplay_ui = None
+
+        self.now_utc = datetime.now(timezone.utc)
+        self.now_utc_iso_str = self.now_utc.isoformat()
+        self.now_utc_timestamp_str = str(int(self.now_utc.timestamp() * 6))
+
+    def add_to_conversation_log(self, text: str, user: str) -> None:
+        stamp = datetime.now(timezone.utc).isoformat()
+        avatar = f'https://robohash.org/{agent_name}' if user == agent_name else f'https://robohash.org/{user}?set=set4'
+
+        self.conversation_log.append({"name": user, "text": text, "stamp": stamp, "avatar": avatar})
 
     def __init__(self):
         self.reset()
@@ -28,12 +42,11 @@ class ScreenplayData:
 screenplay_agent = ScreenplayAgent()
 data = ScreenplayData()
 
+agent_name = "Super Screenplay Assistant"
+
 # =================== HELPERS ===================
 def add_output_stream_text(text: str) -> None:
     data.raw_output += text
-
-def add_log_text(text: str) -> None:
-    conversation_log.push(text + '\n\n')
 
 async def do_thinking(coroutine):
     data.is_thinking = True
@@ -45,6 +58,12 @@ async def do_thinking(coroutine):
     return response
 
 # =================== UI ELEMENTS ===================
+@ui.refreshable
+def conversation_log_ui() -> None:
+    if len(data.conversation_log) > 0:
+        for log_entry in reversed(data.conversation_log):
+            ui.chat_message(log_entry['text'], name=log_entry['name'], avatar=log_entry['avatar'], stamp=log_entry['stamp'])
+
 @ui.refreshable
 def screenplay_ui() -> None:
     if screenplay_agent.is_initialized == False:
@@ -63,7 +82,7 @@ def prompt_and_button() -> None:
     elif screenplay_agent.is_initialized == False:
         ui.button('Get Started!', on_click=initialize).style('width: 20%')
     else:
-        ui.textarea('Enter your prompt here').bind_value(data, 'prompt_text').classes('w-full')
+        ui.textarea('Update Screenplay').bind_value(data, 'prompt_text').classes('w-full')
         ui.button('Send', on_click=send_prompt).style('width: 20%')
 
 @ui.refreshable
@@ -88,21 +107,24 @@ def handle_screenplay_ui_change():
 async def initialize():
     initial_response_text = await do_thinking(screenplay_agent.initialize(add_output_stream_text))
     add_output_stream_text('\n\n')
-    add_log_text(f"{screenplay_agent.agent.name}:\n{initial_response_text}\n")
+    data.add_to_conversation_log(initial_response_text, agent_name)
+    conversation_log_ui.refresh()
     screenplay_ui.refresh()
 
 async def reset():
     screenplay_agent.reset()
-    conversation_log.clear()
     data.reset()
-    prompt_and_button.refresh()
     reset_dialog.close()
+    prompt_and_button.refresh()
+    conversation_log_ui.refresh()
 
 async def send_prompt():
     prompt_text = data.prompt_text
 
     # Add the prompt text to the log, then clear the prompt text
-    add_log_text(f"{data.user_name}:\n{prompt_text}\n")
+    data.add_to_conversation_log(prompt_text, data.user_name)
+    conversation_log_ui.refresh()
+
     data.prompt_text = ''
 
     # Send the prompt to the agent with our version of the latest screenplay if it was edited
@@ -115,10 +137,11 @@ async def send_prompt():
     add_output_stream_text('\n\n')
 
     # Add the full response to the log
-    add_log_text(f"{screenplay_agent.agent.name}:\n{response['content']}\n")
+    data.add_to_conversation_log(response['content'], agent_name)
     data.latest_screenplay = response['latest_screenplay']
     previous_versions.refresh()
     screenplay_ui.refresh()
+    conversation_log_ui.refresh()
 
     data.has_edited_screenplay = False
 
@@ -130,11 +153,17 @@ with ui.dialog() as reset_dialog, ui.card():
         ui.space()
         ui.button('Cancel', on_click=reset_dialog.close)
 
-with ui.card().classes('w-4/5'):
-    ui.markdown('# Screenplay Assistant 3000')
+with ui.card().classes('w-full'):
+    ui.markdown('# Super Screenplay Assistant 3000')
     previous_versions()
 
-    screenplay_ui()
+    with ui.splitter(value=70).classes('w-full') as splitter:
+        with splitter.before:
+            screenplay_ui()
+        with splitter.after:
+            with ui.card_section().classes('w-full max-h-screen'):
+                ui.markdown('## Conversation Log')
+                conversation_log_ui()
 
     with ui.card_section().classes('w-full'):
         with ui.column():
@@ -143,10 +172,6 @@ with ui.card().classes('w-4/5'):
 with ui.card().classes('w-4/5'):
     ui.markdown('### Raw Output Stream')
     ui.markdown('').bind_content(data, 'raw_output').classes('w-full font-mono')
-
-with ui.card().classes('w-4/5'):
-    ui.markdown('### Conversation Log')
-    conversation_log = ui.log().classes('w-full')
 
 with ui.card().classes('w-1/5'):
     ui.markdown('## Settings')
@@ -159,4 +184,4 @@ with ui.card().classes('w-1/5'):
     ui.button('Reset', on_click=reset_dialog.open).style('width: 20%')
 
 # ui.run(on_air=os.environ['ON_AIR_IO_KEY'])
-ui.run()
+ui.run(title='Super Screenplay Assistant 3000')

@@ -9,14 +9,13 @@ from pydantic import BaseModel
 from src.runners.display_streamed_message_result import display_streamed_message_result
 from src.runners.display_streamed_result import display_streamed_result
 from src.runners.process_streamed_result import process_streamed_result
-from src.utils.extract_screenplay_text import extract_screenplay_text
 
 class ScreenwritingOutput(BaseModel):
-    includes_screenplay: bool
+    screenplay: str
     content: str
 
 system_instructions = f"""
-You are a helpful screenwriting assistant. The user will provide an initial prompt for a scene or a screenplay to work off of and you will generate a screenplay for that scene in standard screenplay format, then you will ask the user if they would like to make any updates or changes
+You are a friendly and helpful screenwriting assistant. The user will provide an initial prompt for a scene or a screenplay to work off of and you will generate a screenplay for that scene in standard screenplay format, then you will ask the user if they would like to make any updates or changes. You should put the latest screenplay with edits in the `screenplay` output property, as long as there is a screenplay to present, and nothing else. Use the `content` output property for any responses to the user or additional notes on why you may make certain changes
 
 You will ALWAYS reply with a screenplay formatted using "standard screenplay format". This means you will use the following formatting rules:
 The screenplay will ALWAYS begin with "FADE IN:" and end with "FADE OUT."
@@ -27,9 +26,8 @@ Character names will ALWAYS be in ALL CAPS and centered above their dialogue.
 Dialogue will ALWAYS written in the present tense.
 The screenplay will ALWAYS be formatted with a single blank line between each scene heading, action line, character name, and dialogue.
 
-Whenever you print a screenplay, ALWAYS begin and end the text with the string "===". Additional comments or questions should be outside of the screenplay text. For example:
+An example of a well formatted screenplay:
 ```
-===
 FADE IN:
 
 1. EXT. SUBURBAN HOME - NIGHT
@@ -62,8 +60,6 @@ IN SLOW MOTION - The ball tumbles down the stairs. WE HEAR each bounce echo as t
 He stares into the abyss. Sweat drips down his defeated face. Mouth agape. Hands clenched. WE HEAR a resounding THUD. Filbert takes deep breathe. Pulls his helmet guard down. Draws sword, creeps down the steps, disappears into darkness.
 
 FADE OUT.
-===
-Would you like me to make any additional changes to this screenplay?
 ```
 """
 
@@ -120,8 +116,7 @@ class ScreenplayAgent:
             await process_streamed_result(result, streaming_cb)
 
             final_result = result.final_output_as(ScreenwritingOutput)
-            if final_result.includes_screenplay:
-                self.add_screenplay(extract_screenplay_text(final_result.content))
+            self.add_screenplay(final_result.screenplay)
 
             return {'content': final_result.content, 'latest_screenplay': self.screenplays[-1]}
 
