@@ -70,7 +70,10 @@ def screenplay_ui() -> None:
         data.screenplay_ui = ui.textarea('').style('width: 100%')
         data.screenplay_ui.enabled = False
     else:
-        ui.markdown('## Latest Screenplay')
+        with ui.row().classes('w-full'):
+            ui.markdown('## Latest Screenplay')
+            ui.space()
+            previous_versions()
         data.screenplay_ui = ui.textarea('', on_change=handle_screenplay_ui_change).bind_value(data, 'latest_screenplay').classes('font-mono').style('width: 100%')
         grow_screenplay_ui()
     ui.separator()
@@ -154,9 +157,6 @@ with ui.dialog() as reset_dialog, ui.card():
         ui.button('Cancel', on_click=reset_dialog.close)
 
 with ui.card().classes('w-full'):
-    ui.markdown('# Super Screenplay Assistant 3000')
-    previous_versions()
-
     with ui.splitter(value=70).classes('w-full') as splitter:
         with splitter.before:
             screenplay_ui()

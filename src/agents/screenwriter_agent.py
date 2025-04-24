@@ -1,9 +1,10 @@
 import asyncio
 
-from enum import Enum
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 
-from agents import Agent, Runner, function_tool, trace
+from agents import Agent, Runner, RunContextWrapper, function_tool, trace
 from pydantic import BaseModel
 
 from src.runners.display_streamed_message_result import display_streamed_message_result
@@ -61,21 +62,41 @@ He stares into the abyss. Sweat drips down his defeated face. Mouth agape. Hands
 
 FADE OUT.
 ```
+
+If the user references previous versions of the script, you should use the `get_previous_screenplay_count` and `get_previous_screenplay` tools to retrieve previous versions of the screenplay. You should also use the `get_previous_screenplay_count` tool to get the number of previous screenplays, and the `get_previous_screenplay` tool to get a specific previous screenplay by index
 """
+
+@dataclass
+class ScreenplayAgentData:
+    screenplays = []
 
 class ScreenplayAgent:
     # ========== PROPERTIES ==========
-    agent = Agent(
-        name="Screenplay Assistant",
-        instructions=system_instructions,
-        output_type=ScreenwritingOutput,
-    )
+    data = ScreenplayAgentData()
+
+    agent = None
 
     input_list = []
 
-    screenplays = []
+    @property
+    def screenplays(self):
+        return self.data.screenplays
+
+    @screenplays.setter
+    def screenplays(self, value):
+        self.data.screenplays = value
 
     is_initialized = False
+
+    # ========== TOOLS ==========
+    @function_tool
+    def get_previous_screenplay_count(ctx: RunContextWrapper[ScreenplayAgentData]) -> int:
+        return len(ctx.context.screenplays)
+
+    @function_tool
+    def get_previous_screenplay(ctx: RunContextWrapper[ScreenplayAgentData], index: int) -> str:
+        screenplays = ctx.context.screenplays
+        return screenplays[index] if index < len(screenplays) else None
 
     # ========== METHODS ==========
     def add_screenplay(self, screenplay):
@@ -90,8 +111,18 @@ class ScreenplayAgent:
         if self.is_initialized:
             return
 
+        self.agent = Agent[ScreenplayAgentData](
+            name="Screenplay Assistant",
+            instructions=system_instructions,
+            output_type=ScreenwritingOutput,
+            tools=[
+                self.get_previous_screenplay_count,
+                self.get_previous_screenplay,
+            ]
+        )
+
         with trace(workflow_name=self.workflow_name, trace_id=self.trace_id):
-            result = Runner.run_streamed(self.agent, input=[{"role": "system", "content": "Please introduce yourself and let the user know you are ready for their screenwriting prompt"}])
+            result = Runner.run_streamed(self.agent, input=[{"role": "system", "content": "Please introduce yourself and let the user know you are ready for their screenwriting prompt. Do not generate a screenplay yet"}])
             await process_streamed_result(result, streaming_cb)
             self.is_initialized = True
 
@@ -112,7 +143,7 @@ class ScreenplayAgent:
 
         new_input += [{"role": "user", "content": prompt_text}]
         with trace(workflow_name=self.workflow_name, trace_id=self.trace_id):
-            result = Runner.run_streamed(self.agent, input=new_input)
+            result = Runner.run_streamed(self.agent, input=new_input, context=self.data)
             await process_streamed_result(result, streaming_cb)
 
             final_result = result.final_output_as(ScreenwritingOutput)
