@@ -61,7 +61,7 @@ async def do_thinking(coroutine):
 @ui.refreshable
 def conversation_log_ui() -> None:
     if len(data.conversation_log) > 0:
-        for log_entry in reversed(data.conversation_log):
+        for log_entry in data.conversation_log:
             ui.chat_message(log_entry['text'], name=log_entry['name'], avatar=log_entry['avatar'], stamp=log_entry['stamp'])
 
 @ui.refreshable
@@ -70,12 +70,24 @@ def screenplay_ui() -> None:
         data.screenplay_ui = ui.textarea('').style('width: 100%')
         data.screenplay_ui.enabled = False
     else:
-        with ui.row().classes('w-full'):
-            ui.markdown('## Latest Screenplay')
-            ui.space()
-            previous_versions()
-        data.screenplay_ui = ui.textarea('', on_change=handle_screenplay_ui_change).bind_value(data, 'latest_screenplay').classes('font-mono').style('width: 100%')
-        grow_screenplay_ui()
+        with ui.tabs().classes('w-full') as tabs:
+            story_bible_tab = ui.tab('Story Bible')
+            scene_breakdown_tab = ui.tab('Scene Breakdown')
+            screenplay_tab = ui.tab('Screenplay')
+            screenplay_tab.on('click', lambda: grow_screenplay_ui())
+        with ui.tab_panels(tabs, value=story_bible_tab).classes('w-full'):
+            with ui.tab_panel(story_bible_tab):
+                ui.markdown('# Story Bible')
+            with ui.tab_panel(scene_breakdown_tab):
+                ui.markdown('# Scene Breakdown')
+            with ui.tab_panel(screenplay_tab):
+                with ui.row().classes('w-full'):
+                    ui.markdown('# Latest Screenplay')
+                    ui.space()
+                    previous_versions()
+                data.screenplay_ui = ui.textarea('', on_change=handle_screenplay_ui_change).bind_value(data, 'latest_screenplay').classes('font-mono').style('width: 100%')
+                grow_screenplay_ui()
+
     ui.separator()
 
 @ui.refreshable
@@ -145,6 +157,7 @@ async def send_prompt():
     previous_versions.refresh()
     screenplay_ui.refresh()
     conversation_log_ui.refresh()
+    grow_screenplay_ui()
 
     data.has_edited_screenplay = False
 
@@ -164,10 +177,7 @@ with ui.card().classes('w-full'):
             with ui.card_section().classes('w-full max-h-screen'):
                 ui.markdown('## Conversation Log')
                 conversation_log_ui()
-
-    with ui.card_section().classes('w-full'):
-        with ui.column():
-            prompt_and_button()
+                prompt_and_button()
 
 with ui.card().classes('w-4/5'):
     ui.markdown('### Raw Output Stream')
