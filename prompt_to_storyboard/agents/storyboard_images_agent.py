@@ -27,7 +27,6 @@ class StoryboardImagesAgent:
             ```
 
             {CORE_STORYBOARD_IMAGE_PROMPT_FOOTER}"""
-            print(first_prompt)
             result = self.client.images.generate(
                 model="gpt-image-1",
                 prompt=first_prompt,
@@ -55,7 +54,9 @@ class StoryboardImagesAgent:
                 ```
 
                 {CORE_STORYBOARD_IMAGE_PROMPT_FOOTER}
-                The reference image is the first image in the storyboard. The generated image should have the same style as this image, but with the new prompt."""
+                The first reference image is the first image in the storyboard. The generated image should have the same style as this image, but with the new prompt.
+
+                The second reference image is the previous image in the storyboard. The generated image should logically follow the previous image in the storyboard"""
 
                 print(f"Generating image {i}...")
                 result = self.client.images.edit(
@@ -64,7 +65,8 @@ class StoryboardImagesAgent:
                     size="1536x1024",
                     quality="medium",
                     image=[
-                        open(f"{STORYBOARD_IMAGES_FOLDER}/storyboard_{0}.png", "rb")
+                        open(f"{STORYBOARD_IMAGES_FOLDER}/storyboard_{0}.png", "rb"),
+                        open(f"{STORYBOARD_IMAGES_FOLDER}/storyboard_{i-1}.png", "rb"),
                     ]
                 )
 
