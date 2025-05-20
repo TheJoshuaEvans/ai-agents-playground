@@ -3,17 +3,31 @@ from datetime import datetime, timezone
 from agents import Agent, Runner, trace
 from pydantic import BaseModel
 
-from src.runners.process_streamed_result import process_streamed_result
+from prompt_to_storyboard.utils.process_streamed_result import process_streamed_result
 
-system_instructions = """
-You are an assistant that takes a plot overview and story bible, and generates a screenplay based on them.
-The story bible is a collection of information about the characters, locations, and other relevant details that may be relevant to the screenplay.
-The plot overview is a description of the actions that take place in the story.
-The plot overview will not have dialogue, so you should generate all dialogue as needed.
+class ScreenplayOutput(BaseModel):
+    screenplay: str
+    comments: str
 
-The generated screenplay MUST be in Fountain format, and MUST be a complete screenplay, including all scenes, characters, and dialogue.
-A properly formatted screenplay should look like the following:
+system_instructions = f"""
+You will take a story prompt from a user and a story bible from the system, and write a screenplay in for the story, in paragraph form, based on the prompt and story bible.
+
+The screenplay MUST be in Fountain format, and MUST include all the details needed to generate a complete screenplay, including the setting, characters, and actions.
+The screenplay should be detailed and specific, focusing on the visuals and actions of the characters.
+You must ALWAYS ensure that the screenplay is consistent with the story bible.
+
+ALWAYS put the screenplay in the 'screenplay' field of the output, and any other relevant information or commentary in the 'comments' field.
+
+This is an example of a screenplay in Fountain format:
 ```
+Title:
+    BRICK & STEEL
+    FULL RETIRED
+Credit: Written by
+Author: Stu Maschwitz
+Source: Story by KTM
+Draft date: 1/20/2012
+
 EXT. BRICK'S PATIO - DAY
 
 A gorgeous day. The sun is shining. But BRICK BRADDOCK, retired police detective, is sitting quietly, contemplating -- something.
@@ -163,24 +177,23 @@ Beer flies.
 
 > THE END <
 ```
-DO NOT use the above example as story inspiration. ONLY use it to understand formatting requirements
 """
 
-class ScreenplayOutput(BaseModel):
-    screenplay: str
-    content: str
-
-class OverviewToScreenplayAgent:
+class ScreenplayAgent:
     # ========== PROPERTIES ==========
-    agent = None
+    agent: Agent
 
     # ========== METHODS ==========
-    async def send_prompt(self, story_bible, plot_overview, streaming_cb=None):
-        prompt_text = f"""Please generate a screenplay. This is the story bible:\n{story_bible}\nThis is the plot overview:\n{plot_overview}\n"""
-        new_input = [{"role": "user", "content": prompt_text}]
+    async def generate_screenplay(self, prompt_text, story_bible = '', streaming_cb=None):
+        input = ''
+        if (story_bible != ""):
+            input = [{"role": "system", "content": f"This is the story bible associated with the user's prompt. Ensure the generated screenplay is consistent with this content:\n{story_bible}"}]
+        else:
+            input = [{"role": "system", "content": "There is no story bible information available for this prompt."}]
 
+        input += [{"role": "user", "content": prompt_text}]
         with trace(workflow_name=self.workflow_name, trace_id=self.trace_id):
-            result = Runner.run_streamed(self.agent, input=new_input)
+            result = Runner.run_streamed(self.agent, input=input)
             await process_streamed_result(result, streaming_cb)
 
             final_result = result.final_output_as(ScreenplayOutput)
@@ -193,11 +206,11 @@ class OverviewToScreenplayAgent:
         now_utc_iso_str = now_utc.isoformat()
         now_utc_timestamp_str = str(int(now_utc.timestamp() * 6))
 
-        self.trace_id = "trace_plot_overview_to_screenplay_converting_" + now_utc_timestamp_str
-        self.workflow_name = "Plot Overview Converting to Screenplay at " + now_utc_iso_str
+        self.trace_id = "trace_screenplay_writing_" + now_utc_timestamp_str
+        self.workflow_name = "Screenplay Writing at " + now_utc_iso_str
 
         self.agent = Agent(
-            name="Plot Overview to Screenplay Converter",
+            name="Screenplay Assistant",
             instructions=system_instructions,
             output_type=ScreenplayOutput,
             model="gpt-4.1"

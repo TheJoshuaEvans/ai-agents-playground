@@ -9,3 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .env
+
+# Generated storyboards
+*/assets/storyboards/*
+!*/assets/storyboards/.gitkeep

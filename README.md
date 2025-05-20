@@ -18,12 +18,10 @@ Play a game of ~~Akinator~~ Err... Rotanika:
 uv run akinator.py
 ```
 
-Run a simple screenplay-developer CLI program
+Run a program that helps to iteratively develop a plot overview which can then be be converted into a screenplay
 ```sh
-uv run screenplay.py
+uv run plot_overview.py
 ```
 
-Run the more advanced Screenplay Assistant 3000
-```sh
-uv run screenplay_gui.py
-```
+## Development
+In VSCode, by default, alt+z activates word wrap. There are a lot of long strings in the projects
