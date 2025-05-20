@@ -8,12 +8,13 @@ from prompt_to_storyboard.agents.storyboard_images_agent import StoryboardImages
 
 from prompt_to_storyboard.utils.get_file import get_file
 from prompt_to_storyboard.utils.write_file import write_file
+from prompt_to_storyboard.utils.recursive_stringify import recursive_stringify
 
 INITIAL_PROMPT_FILE = "./prompt_to_storyboard/assets/initial_prompt.txt"
 STORY_BIBLE_FILE = "./prompt_to_storyboard/assets/story_bible.txt"
 # PLOT_OVERVIEW_FILE = "./prompt_to_storyboard/assets/screenplay.txt"
 SCREENPLAY_FILE = "./prompt_to_storyboard/assets/screenplay.txt"
-STORYBOARD_PROMPTS_FILE = "./prompt_to_storyboard/assets/storyboard_prompts.txt"
+STORYBOARD_PROMPTS_FILE = "./prompt_to_storyboard/assets/storyboard_prompts.json"
 
 def output_stream_text(text: str) -> None:
     print(text, end="", flush=True)
@@ -56,15 +57,16 @@ async def main():
         print('No storyboard prompts available. Generating...')
 
         prompt_result = await storyboard_prompts_agent.generate_storyboard_prompts(
-            initial_prompt, story_bible, streaming_cb=output_stream_text
+            screenplay, story_bible, streaming_cb=output_stream_text
         )
         storyboard_prompts = prompt_result.storyboard_prompts
 
-        write_file(STORYBOARD_PROMPTS_FILE, json.dumps(storyboard_prompts))
+        write_file(STORYBOARD_PROMPTS_FILE, recursive_stringify(storyboard_prompts))
     else:
         storyboard_prompts = json.loads(storyboard_prompts)
         print('Storyboard prompts detected. Skipping generation.\n')
 
+    # return # Image generation is very expensive and slow!
     print('Generating storyboard images...\n')
     storyboard_images_agent.generate_storyboard_images(
         storyboard_prompts, story_bible,

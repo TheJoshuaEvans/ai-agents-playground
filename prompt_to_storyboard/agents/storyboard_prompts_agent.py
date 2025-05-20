@@ -5,12 +5,16 @@ from pydantic import BaseModel
 
 from prompt_to_storyboard.utils.process_streamed_result import process_streamed_result
 
+class StoryboardPrompt(BaseModel):
+    prompt: str
+    script: str
+
 class StoryboardPromptsOutput(BaseModel):
-    storyboard_prompts: list[str]
+    storyboard_prompts: list[StoryboardPrompt]
 
 system_instructions = f"""
 You will take a provided screenplay and story bible, and you will generate a list of prompts for the generation of storyboard images with based on the screenplay, in line with details in the story bible, for every shot that be used to tell the story.
-Storyboard prompts should be generated for DALLE3
+Storyboard prompts should be generated for gpt-image-1
 All events that are described in the screenplay MUST be included in the storyboard prompts.
 The storyboard prompts MUST include all details about the shot being described, even if they are not visual in nature.
 Each storyboard prompt MUST be written independently, and MUST NOT reference any other storyboard prompt.
@@ -18,7 +22,10 @@ Each storyboard prompt MUST have all the details needed to generate a complete s
 The storyboard prompts should be detailed and specific, focusing on the visuals and actions of the characters.
 The storyboard prompts should refer to characters by their names and proper nouns should always be preferred over pronouns.
 
-The storyboard prompts MUST be in the form of a list of strings, with each string representing a single prompt, and MUST ALWAYS be added to the 'storyboard_prompts' field of the output.
+The storyboard prompts MUST be in the form of a list of StoryboardPrompt objects, with each object representing a single prompt, and MUST ALWAYS be added to the 'storyboard_prompts' field of the output.
+Each StoryboardPrompt object MUST have the following fields:
+- prompt: The prompt for the storyboard image
+- script: The snippet of the screenplay that the prompt is based on. This MUST be taken directly from the screenplay, and MUST NOT be modified in any way.
 """
 
 class StoryboardPromptsAgent:
